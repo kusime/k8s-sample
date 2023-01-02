@@ -1,0 +1,95 @@
+# https://kubernetes.io/docs/concepts/services-networking/service/
+apiVersion: v1
+kind: Service
+metadata:
+  name: one-pod-multi-containers
+  namespace: default
+spec:
+  selector:
+    app: one-pod-multi-containers
+  type: ClusterIP
+  ports:
+    - name: one-pod-multi-containers
+      protocol: TCP
+      # the service access port
+      port: 81
+      # the container port
+      targetPort: 8181
+    - name: one-pod-multi-containers
+      protocol: TCP
+      # the service access port
+      port: 82
+      # the container port
+      targetPort: 8282f
+---
+
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: one-pod-multi-containers
+  namespace: default
+  labels:
+    app: one-pod-multi-containers
+spec:
+  selector:
+    matchLabels:
+      app: one-pod-multi-containers
+  replicas: 1
+  template:
+    metadata:
+      labels:
+        app: one-pod-multi-containers
+    spec:
+      containers:
+        - name: container-1
+          image: kusimedev/applications:1
+          imagePullPolicy: Always
+          resources:
+            requests:
+              cpu: 100m
+              memory: 100Mi
+            limits:
+              cpu: 100m
+              memory: 100Mi
+          env:
+            - name: PORT
+              valueFrom:
+                configMapKeyRef:
+                  name: running-port
+                  key: PORT
+          ports:
+            # internal port
+            - containerPort: 8181
+              name: one-pod-multi-containers
+          volumeMounts:
+            - name: out-side-volumes-pvc
+              # internal container path
+              mountPath: /internal/path
+        - name: container-2
+          image: kusimedev/applications:1
+          imagePullPolicy: Always
+          resources:
+            requests:
+              cpu: 100m
+              memory: 100Mi
+            limits:
+              cpu: 100m
+              memory: 100Mi
+          env:
+            - name: PORT
+              valueFrom:
+                configMapKeyRef:
+                  name: running-port
+                  key: PORT
+          ports:
+            # internal port
+            - containerPort: 8282
+              name: one-pod-multi-containers
+          volumeMounts:
+            - name: out-side-volumes-pvc
+              # internal container path
+              mountPath: /internal/path
+      restartPolicy: Always
+---
+

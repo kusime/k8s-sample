@@ -1,0 +1,8 @@
+# https://kubernetes.io/docs/concepts/configuration/configmap/
+kind: ConfigMap
+apiVersion: v1
+metadata:
+  name: running-port
+  namespace: default
+data:
+  PORT: "6000"

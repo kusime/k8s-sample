@@ -1,0 +1,97 @@
+# https://kubernetes.io/docs/concepts/services-networking/service/
+apiVersion: v1
+kind: Service
+metadata:
+  name: nuxt-yaml-service
+  namespace: default
+spec:
+  selector:
+    # this service will monitor the pod which its name is use this labels ,
+    # no matter the tier is , and this feature can be used to use one service
+    # object to mapping the service pods
+    app: nuxt-yaml
+  type: LoadBalancer
+  ports:
+    - name: nuxt-yaml-font-end
+      protocol: TCP
+      port: 6000
+      # in-container port
+      targetPort: 6000
+---
+# https://kubernetes.io/docs/concepts/workloads/controllers/deployment/
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: my-nuxt-deployment
+  namespace: default
+  labels:
+    app: declarative-nuxt-deployment
+spec:
+  selector:
+    matchLabels:
+      app: nuxt-yaml
+      tier: font-end
+  replicas: 4
+
+  template:
+    metadata:
+      labels:
+        app: nuxt-yaml
+        tier: font-end
+    spec:
+      # initContainers:
+      # Init containers are exactly like regular containers, except:
+      # - Init containers always run to completion.
+      # - Each init container must complete successfully before the next one starts.
+      containers:
+        - name: nuxt-yaml-cont
+          image: kusimedev/nuxt-deploy:v2
+          # all ways
+          imagePullPolicy: Always
+          resources:
+            requests:
+              cpu: 200m
+              memory: 500Mi
+            limits:
+              cpu: 600m
+              memory: 600Mi
+          env:
+            - name: PORT
+              valueFrom:
+                configMapKeyRef:
+                  name: running-port
+                  key: PORT
+          # docker internal port
+          ports:
+            - containerPort: 6000
+              name: font-end-expose
+          # k8s livenessProbe
+          livenessProbe:
+            httpGet:
+              path: /
+              port: 6000
+            initialDelaySeconds: 5
+            timeoutSeconds: 5
+            periodSeconds: 10
+          # the container volume or persist volume
+          volumeMounts:
+            # the in-container volume mount
+            - mountPath: /nuxt/.output/server
+              # the mounter name
+              name: "pv-storage"
+      volumes:
+        - name: pv-storage
+          persistentVolumeClaim:
+            claimName: host-pvc
+        # - name: "nuxt-bind-volumes"
+        #   # hostPath is kind like the bind volumes amount , this volume will share pointed path to the all pods
+        #   # hostPath
+        #   # while the emptyDir will only available to each pod
+        #   # https://kubernetes.io/docs/concepts/storage/volumes/#hostpath
+        #   hostPath:
+        #     path: "/data"
+        #     type: DirectoryOrCreate
+      # volumes:
+      #   - name: "nuxt-storage"
+      #     # this emptyDir will create a directory to host the mount point in the container
+      #     emptyDir: {}
